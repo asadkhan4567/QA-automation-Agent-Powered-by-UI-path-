@@ -1,0 +1,82 @@
+{
+  "approveTestPR": {
+    "title": "Approve Test PR",
+    "inputs": [
+      "ticket_key",
+      "test_cases",
+      "spec_file",
+      "confidence"
+    ],
+    "outputs": {
+      "decision": [
+        "Approve",
+        "Reject"
+      ],
+      "comments": "string"
+    },
+    "outcomes": [
+      "Submit"
+    ]
+  },
+  "approveBug": {
+    "title": "Approve S1/S2 Bug",
+    "inputs": [
+      "bugs",
+      "severity",
+      "ci_run_url"
+    ],
+    "outputs": {
+      "final_severity": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "comments": "string"
+    },
+    "outcomes": [
+      "Approve"
+    ]
+  },
+  "reviewTriage": {
+    "title": "Review Low-Confidence Triage",
+    "inputs": [
+      "failures",
+      "reasoning"
+    ],
+    "outputs": {
+      "category": [
+        "ProductBug",
+        "TestBug",
+        "Flaky",
+        "Environment"
+      ],
+      "comments": "string"
+    },
+    "outcomes": [
+      "Submit"
+    ]
+  },
+  "confirmClosure": {
+    "title": "Confirm Ticket Closure",
+    "inputs": [
+      "bug_keys",
+      "run_summary"
+    ],
+    "outputs": {
+      "close": [
+        "Yes",
+        "No"
+      ],
+      "comments": "string"
+    },
+    "outcomes": [
+      "Confirm"
+    ]
+  },
+  "assignment": {
+    "group": "QA Leads",
+    "sla": "1 business day",
+    "escalation": "QA Manager"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "severity",
+    "bugs",
+    "status",
+    "confidence",
+    "reasoning"
+  ],
+  "properties": {
+    "severity": {
+      "type": "string",
+      "description": "Highest severity across bugs: exactly \"S1\", \"S2\", \"S3\" or \"S4\"."
+    },
+    "bugs": {
+      "type": "string",
+      "description": "JSON array of Jira bug payloads: summary, description, severity, priority, labels, linked_issue, evidence_urls."
+    },
+    "status": {
+      "type": "string",
+      "description": "\"success\", \"review\" or \"failure\"."
+    },
+    "confidence": {
+      "type": "number",
+      "description": "0.0-1.0 confidence in this result."
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "One-paragraph explanation."
+    }
+  },
+  "additionalProperties": false
+}

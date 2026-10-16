@@ -1,0 +1,153 @@
+{
+  "name": "Verify Fixed Bugs",
+  "runtime": "maestro",
+  "format": "portable-definition/1.0",
+  "note": "Portable definition of the Studio Web Maestro Flow (nodes, ports, branch expressions, prompts by reference). Rebuild in Studio Web or import the Studio export under uipath/flow/export when available.",
+  "nodes": [
+    {
+      "id": "manualTrigger1",
+      "type": "core.trigger.manual",
+      "label": "Start: Daily Verification",
+      "config": {
+        "schedule": "Orchestrator time trigger daily"
+      }
+    },
+    {
+      "id": "fetchFixedBugs",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Fetch Fixed Bugs",
+      "config": {
+        "process": "RPA Workflow to Fetch Sprint QA Tickets",
+        "in_Mode": "verify",
+        "jql": "project = UIP AND status = Fixed AND labels = qa-auto"
+      }
+    },
+    {
+      "id": "fixVerificationAgent",
+      "type": "uipath.agent.autonomous",
+      "label": "Prepare Fix Verification",
+      "config": {
+        "agent": "agents/failure-triage-agent",
+        "mode": "verify"
+      }
+    },
+    {
+      "id": "runVerification",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Trigger CI (grep @module, repeat 10)",
+      "config": {
+        "process": "RPA Workflow to Trigger and Monitor CI",
+        "inputs": {
+          "repeat_each": 10,
+          "retries": 0
+        }
+      }
+    },
+    {
+      "id": "allPassed",
+      "type": "core.logic.decision",
+      "label": "All 10 Runs Passed?",
+      "config": {
+        "expression": "$vars.runVerification.output.passed == true"
+      }
+    },
+    {
+      "id": "markVerified",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Mark Bug Verified",
+      "config": {
+        "process": "RPA Workflow to Create Jira Bug and Update Bug Sheet",
+        "in_Mode": "transition",
+        "transition": "Verified"
+      }
+    },
+    {
+      "id": "confirmClosure",
+      "type": "uipath.human-in-the-loop.quick-form",
+      "label": "Human Review: Confirm Ticket Closure",
+      "config": {
+        "form": "orchestrator/action-center-forms.json#confirmClosure"
+      }
+    },
+    {
+      "id": "endClosed",
+      "type": "core.control.end",
+      "label": "End: Verified"
+    },
+    {
+      "id": "reopenBug",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Reopen Jira Bug",
+      "config": {
+        "process": "RPA Workflow to Create Jira Bug and Update Bug Sheet",
+        "in_Mode": "transition",
+        "transition": "Reopened"
+      }
+    },
+    {
+      "id": "teamsReopened",
+      "type": "uipath.connector.uipath-microsoft-teams.send-channel-message",
+      "label": "Send Teams Notification"
+    },
+    {
+      "id": "endReopened",
+      "type": "core.control.end",
+      "label": "End: Reopened"
+    }
+  ],
+  "edges": [
+    {
+      "from": "manualTrigger1",
+      "port": "output",
+      "to": "fetchFixedBugs"
+    },
+    {
+      "from": "fetchFixedBugs",
+      "port": "output",
+      "to": "fixVerificationAgent"
+    },
+    {
+      "from": "fixVerificationAgent",
+      "port": "success",
+      "to": "runVerification"
+    },
+    {
+      "from": "runVerification",
+      "port": "output",
+      "to": "allPassed"
+    },
+    {
+      "from": "allPassed",
+      "port": "true",
+      "to": "markVerified"
+    },
+    {
+      "from": "markVerified",
+      "port": "output",
+      "to": "confirmClosure"
+    },
+    {
+      "from": "confirmClosure",
+      "port": "completed",
+      "to": "endClosed"
+    },
+    {
+      "from": "allPassed",
+      "port": "false",
+      "to": "reopenBug"
+    },
+    {
+      "from": "reopenBug",
+      "port": "output",
+      "to": "teamsReopened"
+    },
+    {
+      "from": "teamsReopened",
+      "port": "output",
+      "to": "endReopened"
+    }
+  ],
+  "stickyNotes": {
+    "verify": "Verify fixed bugs before anyone closes them. Every day the process picks up Jira bugs marked Fixed and an agent prepares a targeted rerun of the module that failed. CI runs those tests ten times so flakiness cannot pass as a fix. A clean run marks the bug Verified and asks a person to confirm closure. Any failure reopens the bug with the failing run attached and posts to Teams."
+  }
+}

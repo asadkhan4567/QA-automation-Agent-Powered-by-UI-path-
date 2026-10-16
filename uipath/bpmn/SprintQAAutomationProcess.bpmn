@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Defs_SprintQAAutomationProcess" targetNamespace="http://bpmn.io/schema/bpmn">
+<bpmn:process id="SprintQAAutomationProcess" name="Sprint QA Automation Process" isExecutable="true">
+<bpmn:startEvent id="Start" name="Start (Manual / Every 2h)"><bpmn:documentation>Triggers: Manual + Orchestrator Time trigger every 2 hours.</bpmn:documentation><bpmn:outgoing>F_Start_FetchTickets</bpmn:outgoing></bpmn:startEvent>
+<bpmn:serviceTask id="FetchTickets" name="Fetch Sprint QA Tickets"><bpmn:documentation>RPA Workflow to Fetch Sprint QA Tickets (REFramework dispatcher) -&gt; Queue QA_Tickets</bpmn:documentation><bpmn:incoming>F_Start_FetchTickets</bpmn:incoming><bpmn:outgoing>F_FetchTickets_TestDesign</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="TestDesign" name="Process Ticket for Test Design"><bpmn:documentation>Agent 1: Test Design &amp; Scaffold Agent</bpmn:documentation><bpmn:incoming>F_FetchTickets_TestDesign</bpmn:incoming><bpmn:outgoing>F_TestDesign_ApprovePR</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:userTask id="ApprovePR" name="Human Review: Approve Test PR"><bpmn:documentation>Action Center app: Approve Test PR</bpmn:documentation><bpmn:incoming>F_TestDesign_ApprovePR</bpmn:incoming><bpmn:outgoing>F_ApprovePR_G_PR</bpmn:outgoing></bpmn:userTask>
+<bpmn:exclusiveGateway id="G_PR" name="PR Approved?" default="F_G_PR_CommitPR"><bpmn:incoming>F_ApprovePR_G_PR</bpmn:incoming><bpmn:outgoing>F_G_PR_CommitPR</bpmn:outgoing><bpmn:outgoing>F_G_PR_EndRejected</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:serviceTask id="CommitPR" name="Commit Tests and Open PR"><bpmn:documentation>RPA Workflow to Commit Tests and Open PR (GitHub REST)</bpmn:documentation><bpmn:incoming>F_G_PR_CommitPR</bpmn:incoming><bpmn:outgoing>F_CommitPR_RunCI</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="RunCI" name="Trigger and Monitor CI"><bpmn:documentation>RPA Workflow to Trigger and Monitor CI (workflow_dispatch, poll, download results.json)</bpmn:documentation><bpmn:incoming>F_CommitPR_RunCI</bpmn:incoming><bpmn:outgoing>F_RunCI_G_CI</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:exclusiveGateway id="G_CI" name="CI Passed?" default="F_G_CI_Triage"><bpmn:incoming>F_RunCI_G_CI</bpmn:incoming><bpmn:outgoing>F_G_CI_G_Join</bpmn:outgoing><bpmn:outgoing>F_G_CI_Triage</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:serviceTask id="Triage" name="Triage CI Failures"><bpmn:documentation>Agent 2: Failure Triage Agent (triage mode)</bpmn:documentation><bpmn:incoming>F_G_CI_Triage</bpmn:incoming><bpmn:outgoing>F_Triage_G_Cat</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:exclusiveGateway id="G_Cat" name="Triage Category" default="F_G_Cat_BugReport"><bpmn:incoming>F_Triage_G_Cat</bpmn:incoming><bpmn:incoming>F_ReviewTriage_G_Cat</bpmn:incoming><bpmn:outgoing>F_G_Cat_BugReport</bpmn:outgoing><bpmn:outgoing>F_G_Cat_CreateTask</bpmn:outgoing><bpmn:outgoing>F_G_Cat_ReviewTriage</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:serviceTask id="BugReport" name="Prepare Bug Report"><bpmn:documentation>Agent 3: Bug Report Agent</bpmn:documentation><bpmn:incoming>F_G_Cat_BugReport</bpmn:incoming><bpmn:outgoing>F_BugReport_G_Sev</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:exclusiveGateway id="G_Sev" name="Severity S1/S2?" default="F_G_Sev_CreateBug"><bpmn:incoming>F_BugReport_G_Sev</bpmn:incoming><bpmn:outgoing>F_G_Sev_ApproveBug</bpmn:outgoing><bpmn:outgoing>F_G_Sev_CreateBug</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:userTask id="ApproveBug" name="Human Review: Approve S1/S2 Bug"><bpmn:documentation>Action Center app: Approve S1/S2 Bug</bpmn:documentation><bpmn:incoming>F_G_Sev_ApproveBug</bpmn:incoming><bpmn:outgoing>F_ApproveBug_CreateBug</bpmn:outgoing></bpmn:userTask>
+<bpmn:serviceTask id="CreateBug" name="Create Jira Bug and Update Sheet"><bpmn:documentation>RPA Workflow to Create Jira Bug and Update Bug Sheet</bpmn:documentation><bpmn:incoming>F_ApproveBug_CreateBug</bpmn:incoming><bpmn:incoming>F_G_Sev_CreateBug</bpmn:incoming><bpmn:outgoing>F_CreateBug_G_Join</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="CreateTask" name="Create Jira Task"><bpmn:documentation>RPA Workflow to Create Jira Bug and Update Bug Sheet (issueType=Task)</bpmn:documentation><bpmn:incoming>F_G_Cat_CreateTask</bpmn:incoming><bpmn:outgoing>F_CreateTask_G_Join</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:userTask id="ReviewTriage" name="Review Low-Confidence Triage"><bpmn:documentation>Action Center app: Review Low-Confidence Triage</bpmn:documentation><bpmn:incoming>F_G_Cat_ReviewTriage</bpmn:incoming><bpmn:outgoing>F_ReviewTriage_G_Cat</bpmn:outgoing></bpmn:userTask>
+<bpmn:exclusiveGateway id="G_Join" name="Merge"><bpmn:incoming>F_G_CI_G_Join</bpmn:incoming><bpmn:incoming>F_CreateBug_G_Join</bpmn:incoming><bpmn:incoming>F_CreateTask_G_Join</bpmn:incoming><bpmn:outgoing>F_G_Join_Notify</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:serviceTask id="Notify" name="Send Teams Notification"><bpmn:documentation>RPA Workflow to Send Teams Notification</bpmn:documentation><bpmn:incoming>F_G_Join_Notify</bpmn:incoming><bpmn:outgoing>F_Notify_End</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:endEvent id="End" name="End"><bpmn:incoming>F_Notify_End</bpmn:incoming></bpmn:endEvent>
+<bpmn:endEvent id="EndRejected" name="Test PR Rejected"><bpmn:incoming>F_G_PR_EndRejected</bpmn:incoming></bpmn:endEvent>
+<bpmn:sequenceFlow id="F_Start_FetchTickets" sourceRef="Start" targetRef="FetchTickets"/>
+<bpmn:sequenceFlow id="F_FetchTickets_TestDesign" sourceRef="FetchTickets" targetRef="TestDesign"/>
+<bpmn:sequenceFlow id="F_TestDesign_ApprovePR" sourceRef="TestDesign" targetRef="ApprovePR"/>
+<bpmn:sequenceFlow id="F_ApprovePR_G_PR" sourceRef="ApprovePR" targetRef="G_PR"/>
+<bpmn:sequenceFlow id="F_G_PR_CommitPR" sourceRef="G_PR" targetRef="CommitPR" name="Approved"/>
+<bpmn:sequenceFlow id="F_G_PR_EndRejected" sourceRef="G_PR" targetRef="EndRejected" name="Rejected"><bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">vars.approveTestPR.outcome == &quot;Reject&quot;</bpmn:conditionExpression></bpmn:sequenceFlow>
+<bpmn:sequenceFlow id="F_CommitPR_RunCI" sourceRef="CommitPR" targetRef="RunCI"/>
+<bpmn:sequenceFlow id="F_RunCI_G_CI" sourceRef="RunCI" targetRef="G_CI"/>
+<bpmn:sequenceFlow id="F_G_CI_G_Join" sourceRef="G_CI" targetRef="G_Join" name="Yes"><bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">vars.ciResult.passed == true</bpmn:conditionExpression></bpmn:sequenceFlow>
+<bpmn:sequenceFlow id="F_G_CI_Triage" sourceRef="G_CI" targetRef="Triage" name="No"/>
+<bpmn:sequenceFlow id="F_Triage_G_Cat" sourceRef="Triage" targetRef="G_Cat"/>
+<bpmn:sequenceFlow id="F_G_Cat_BugReport" sourceRef="G_Cat" targetRef="BugReport" name="ProductBug"/>
+<bpmn:sequenceFlow id="F_G_Cat_CreateTask" sourceRef="G_Cat" targetRef="CreateTask" name="Flaky / TestBug"><bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">vars.triage.category == &quot;Flaky&quot; || vars.triage.category == &quot;TestBug&quot;</bpmn:conditionExpression></bpmn:sequenceFlow>
+<bpmn:sequenceFlow id="F_G_Cat_ReviewTriage" sourceRef="G_Cat" targetRef="ReviewTriage" name="Confidence &lt; 0.7"><bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">vars.triage.confidence &lt; 0.7</bpmn:conditionExpression></bpmn:sequenceFlow>
+<bpmn:sequenceFlow id="F_ReviewTriage_G_Cat" sourceRef="ReviewTriage" targetRef="G_Cat" name="Re-route with reviewer category"/>
+<bpmn:sequenceFlow id="F_BugReport_G_Sev" sourceRef="BugReport" targetRef="G_Sev"/>
+<bpmn:sequenceFlow id="F_G_Sev_ApproveBug" sourceRef="G_Sev" targetRef="ApproveBug" name="S1 / S2"><bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">vars.bugReport.severity == &quot;S1&quot; || vars.bugReport.severity == &quot;S2&quot;</bpmn:conditionExpression></bpmn:sequenceFlow>
+<bpmn:sequenceFlow id="F_ApproveBug_CreateBug" sourceRef="ApproveBug" targetRef="CreateBug" name="Approved"/>
+<bpmn:sequenceFlow id="F_G_Sev_CreateBug" sourceRef="G_Sev" targetRef="CreateBug" name="S3 / S4"/>
+<bpmn:sequenceFlow id="F_CreateBug_G_Join" sourceRef="CreateBug" targetRef="G_Join"/>
+<bpmn:sequenceFlow id="F_CreateTask_G_Join" sourceRef="CreateTask" targetRef="G_Join"/>
+<bpmn:sequenceFlow id="F_G_Join_Notify" sourceRef="G_Join" targetRef="Notify"/>
+<bpmn:sequenceFlow id="F_Notify_End" sourceRef="Notify" targetRef="End"/>
+<bpmn:textAnnotation id="N_Overview"><bpmn:text>From sprint tickets to verified bug fixes
+
+You pick up the active sprint&#x27;s QA tickets and an agent drafts Playwright test cases and a spec file for each one. A person approves every test PR before it is committed, and CI runs the suite on GitHub Actions. When a run fails, a second agent triages the failure and a third writes the bug report, while a person signs off on S1/S2 bugs and any triage the agent is unsure about. Bugs land in Jira and the Bug Sheet, and the team hears about it on Teams.
+
+Note: Ask a coding agent to generate a sample Jira story with acceptance criteria and a failing results.json for testing.</bpmn:text></bpmn:textAnnotation>
+<bpmn:textAnnotation id="N_Fetch"><bpmn:text>RPA (REFramework dispatcher): JQL sprint in openSprints() AND labels = QA -&gt; Queue QA_Tickets. Assets: Jira_BaseUrl, Jira_Credential. No acceptance criteria / no repo mapping -&gt; BusinessRuleException: skip + Jira comment.</bpmn:text></bpmn:textAnnotation>
+<bpmn:textAnnotation id="N_Agent1"><bpmn:text>Agent 1 - Test Design &amp; Scaffold Agent (test-case-writer + browser-automation + code-review). Returns strict JSON: test_cases, spec_file, confidence.</bpmn:text></bpmn:textAnnotation>
+<bpmn:textAnnotation id="N_HITL"><bpmn:text>Action Center: Approve Test PR. No auto-merge; PR stays open for human merge.</bpmn:text></bpmn:textAnnotation>
+<bpmn:textAnnotation id="N_GitHub"><bpmn:text>GitHub REST via Assets GitHub_Token, GitHub_Repo. CI: workflow_dispatch -&gt; poll run -&gt; download results.json artifact.</bpmn:text></bpmn:textAnnotation>
+<bpmn:textAnnotation id="N_Triage"><bpmn:text>Agent 2 (triage mode): ProductBug | TestBug | Flaky | Environment with confidence. Confidence &lt; 0.7 always goes to human review.</bpmn:text></bpmn:textAnnotation>
+<bpmn:textAnnotation id="N_Bug"><bpmn:text>Agent 3 - Bug Report Agent. S1/S2 need Approve S1/S2 Bug before Jira. Sheet: Asset BugSheet_Id. No auto-close.</bpmn:text></bpmn:textAnnotation>
+<bpmn:textAnnotation id="N_Errors"><bpmn:text>Errors: SystemException (API / CI / LLM) -&gt; retry 3 -&gt; escalate on Teams (Asset Teams_Channel). BusinessRuleException -&gt; skip ticket + Jira comment. No hardcoded config: Orchestrator Assets only.</bpmn:text></bpmn:textAnnotation>
+<bpmn:association id="A_N_Fetch_FetchTickets" sourceRef="FetchTickets" targetRef="N_Fetch"/>
+<bpmn:association id="A_N_Agent1_TestDesign" sourceRef="TestDesign" targetRef="N_Agent1"/>
+<bpmn:association id="A_N_HITL_ApprovePR" sourceRef="ApprovePR" targetRef="N_HITL"/>
+<bpmn:association id="A_N_GitHub_RunCI" sourceRef="RunCI" targetRef="N_GitHub"/>
+<bpmn:association id="A_N_Triage_Triage" sourceRef="Triage" targetRef="N_Triage"/>
+<bpmn:association id="A_N_Bug_BugReport" sourceRef="BugReport" targetRef="N_Bug"/>
+<bpmn:association id="A_N_Errors_Notify" sourceRef="Notify" targetRef="N_Errors"/>
+</bpmn:process>
+<bpmndi:BPMNDiagram id="D_SprintQAAutomationProcess"><bpmndi:BPMNPlane id="PL_SprintQAAutomationProcess" bpmnElement="SprintQAAutomationProcess">
+<bpmndi:BPMNShape id="Start_di" bpmnElement="Start"><dc:Bounds x="60" y="312.0" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="FetchTickets_di" bpmnElement="FetchTickets"><dc:Bounds x="140" y="295.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="TestDesign_di" bpmnElement="TestDesign"><dc:Bounds x="300" y="295.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="ApprovePR_di" bpmnElement="ApprovePR"><dc:Bounds x="460" y="295.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="G_PR_di" bpmnElement="G_PR" isMarkerVisible="true"><dc:Bounds x="620" y="305.0" width="50" height="50"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="CommitPR_di" bpmnElement="CommitPR"><dc:Bounds x="720" y="295.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="RunCI_di" bpmnElement="RunCI"><dc:Bounds x="880" y="295.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="G_CI_di" bpmnElement="G_CI" isMarkerVisible="true"><dc:Bounds x="1040" y="305.0" width="50" height="50"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Triage_di" bpmnElement="Triage"><dc:Bounds x="1140" y="485.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="G_Cat_di" bpmnElement="G_Cat" isMarkerVisible="true"><dc:Bounds x="1300" y="495.0" width="50" height="50"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="BugReport_di" bpmnElement="BugReport"><dc:Bounds x="1400" y="485.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="G_Sev_di" bpmnElement="G_Sev" isMarkerVisible="true"><dc:Bounds x="1560" y="495.0" width="50" height="50"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="ApproveBug_di" bpmnElement="ApproveBug"><dc:Bounds x="1650" y="635.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="CreateBug_di" bpmnElement="CreateBug"><dc:Bounds x="1820" y="485.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="CreateTask_di" bpmnElement="CreateTask"><dc:Bounds x="1400" y="785.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="ReviewTriage_di" bpmnElement="ReviewTriage"><dc:Bounds x="1400" y="935.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="G_Join_di" bpmnElement="G_Join" isMarkerVisible="true"><dc:Bounds x="2000" y="305.0" width="50" height="50"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Notify_di" bpmnElement="Notify"><dc:Bounds x="2100" y="295.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="End_di" bpmnElement="End"><dc:Bounds x="2270" y="312.0" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="EndRejected_di" bpmnElement="EndRejected"><dc:Bounds x="627" y="152.0" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_Overview_di" bpmnElement="N_Overview"><dc:Bounds x="40" y="-40" width="560" height="220"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_Fetch_di" bpmnElement="N_Fetch"><dc:Bounds x="640" y="-40" width="300" height="120"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_Agent1_di" bpmnElement="N_Agent1"><dc:Bounds x="980" y="-40" width="300" height="100"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_HITL_di" bpmnElement="N_HITL"><dc:Bounds x="640" y="100" width="260" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_GitHub_di" bpmnElement="N_GitHub"><dc:Bounds x="1320" y="-40" width="300" height="90"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_Triage_di" bpmnElement="N_Triage"><dc:Bounds x="1660" y="-40" width="300" height="90"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_Bug_di" bpmnElement="N_Bug"><dc:Bounds x="2000" y="-40" width="300" height="90"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_Errors_di" bpmnElement="N_Errors"><dc:Bounds x="2000" y="90" width="300" height="100"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="F_Start_FetchTickets_di" bpmnElement="F_Start_FetchTickets"><di:waypoint x="96" y="330.0"/><di:waypoint x="140" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_FetchTickets_TestDesign_di" bpmnElement="F_FetchTickets_TestDesign"><di:waypoint x="250" y="330.0"/><di:waypoint x="300" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_TestDesign_ApprovePR_di" bpmnElement="F_TestDesign_ApprovePR"><di:waypoint x="410" y="330.0"/><di:waypoint x="460" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_ApprovePR_G_PR_di" bpmnElement="F_ApprovePR_G_PR"><di:waypoint x="570" y="330.0"/><di:waypoint x="620" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_PR_CommitPR_di" bpmnElement="F_G_PR_CommitPR"><di:waypoint x="670" y="330.0"/><di:waypoint x="720" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_PR_EndRejected_di" bpmnElement="F_G_PR_EndRejected"><di:waypoint x="645" y="305"/><di:waypoint x="645" y="206"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_CommitPR_RunCI_di" bpmnElement="F_CommitPR_RunCI"><di:waypoint x="830" y="330.0"/><di:waypoint x="880" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_RunCI_G_CI_di" bpmnElement="F_RunCI_G_CI"><di:waypoint x="990" y="330.0"/><di:waypoint x="1040" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_CI_G_Join_di" bpmnElement="F_G_CI_G_Join"><di:waypoint x="1090" y="330"/><di:waypoint x="2000" y="330"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_CI_Triage_di" bpmnElement="F_G_CI_Triage"><di:waypoint x="1065" y="355"/><di:waypoint x="1065" y="520"/><di:waypoint x="1140" y="520"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_Triage_G_Cat_di" bpmnElement="F_Triage_G_Cat"><di:waypoint x="1250" y="520.0"/><di:waypoint x="1300" y="520.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_Cat_BugReport_di" bpmnElement="F_G_Cat_BugReport"><di:waypoint x="1350" y="520.0"/><di:waypoint x="1400" y="520.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_Cat_CreateTask_di" bpmnElement="F_G_Cat_CreateTask"><di:waypoint x="1325" y="545"/><di:waypoint x="1325" y="820"/><di:waypoint x="1400" y="820"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_Cat_ReviewTriage_di" bpmnElement="F_G_Cat_ReviewTriage"><di:waypoint x="1325" y="545"/><di:waypoint x="1325" y="970"/><di:waypoint x="1400" y="970"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_ReviewTriage_G_Cat_di" bpmnElement="F_ReviewTriage_G_Cat"><di:waypoint x="1510" y="970"/><di:waypoint x="1540" y="970"/><di:waypoint x="1540" y="920"/><di:waypoint x="1280" y="920"/><di:waypoint x="1280" y="530"/><di:waypoint x="1303" y="530"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_BugReport_G_Sev_di" bpmnElement="F_BugReport_G_Sev"><di:waypoint x="1510" y="520.0"/><di:waypoint x="1560" y="520.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_Sev_ApproveBug_di" bpmnElement="F_G_Sev_ApproveBug"><di:waypoint x="1585" y="545"/><di:waypoint x="1585" y="670"/><di:waypoint x="1650" y="670"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_ApproveBug_CreateBug_di" bpmnElement="F_ApproveBug_CreateBug"><di:waypoint x="1760" y="670"/><di:waypoint x="1875" y="670"/><di:waypoint x="1875" y="555"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_Sev_CreateBug_di" bpmnElement="F_G_Sev_CreateBug"><di:waypoint x="1610" y="520.0"/><di:waypoint x="1820" y="520.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_CreateBug_G_Join_di" bpmnElement="F_CreateBug_G_Join"><di:waypoint x="1930" y="520"/><di:waypoint x="2025" y="520"/><di:waypoint x="2025" y="355"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_CreateTask_G_Join_di" bpmnElement="F_CreateTask_G_Join"><di:waypoint x="1510" y="820"/><di:waypoint x="2025" y="820"/><di:waypoint x="2025" y="355"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_Join_Notify_di" bpmnElement="F_G_Join_Notify"><di:waypoint x="2050" y="330.0"/><di:waypoint x="2100" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_Notify_End_di" bpmnElement="F_Notify_End"><di:waypoint x="2210" y="330.0"/><di:waypoint x="2270" y="330.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="A_N_Fetch_FetchTickets_di" bpmnElement="A_N_Fetch_FetchTickets"><di:waypoint x="195.0" y="295.0"/><di:waypoint x="660" y="80"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="A_N_Agent1_TestDesign_di" bpmnElement="A_N_Agent1_TestDesign"><di:waypoint x="355.0" y="295.0"/><di:waypoint x="1000" y="60"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="A_N_HITL_ApprovePR_di" bpmnElement="A_N_HITL_ApprovePR"><di:waypoint x="515.0" y="295.0"/><di:waypoint x="660" y="160"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="A_N_GitHub_RunCI_di" bpmnElement="A_N_GitHub_RunCI"><di:waypoint x="935.0" y="295.0"/><di:waypoint x="1340" y="50"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="A_N_Triage_Triage_di" bpmnElement="A_N_Triage_Triage"><di:waypoint x="1195.0" y="485.0"/><di:waypoint x="1680" y="50"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="A_N_Bug_BugReport_di" bpmnElement="A_N_Bug_BugReport"><di:waypoint x="1455.0" y="485.0"/><di:waypoint x="2020" y="50"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="A_N_Errors_Notify_di" bpmnElement="A_N_Errors_Notify"><di:waypoint x="2155.0" y="295.0"/><di:waypoint x="2020" y="190"/></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>

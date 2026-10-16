@@ -1,0 +1,50 @@
+{
+  "folder": "Shared",
+  "assets": [
+    {
+      "name": "Jira_BaseUrl",
+      "type": "Text",
+      "value": "https://codeninjapk.atlassian.net"
+    },
+    {
+      "name": "Jira_Credential",
+      "type": "Credential",
+      "value": "<set in Orchestrator: Jira user + API token>"
+    },
+    {
+      "name": "GitHub_Token",
+      "type": "Credential",
+      "value": "<set in Orchestrator: fine-grained PAT (contents, pull_requests, actions)>"
+    },
+    {
+      "name": "GitHub_Repo",
+      "type": "Text",
+      "value": "asadkhan4567/QA-automation-Agent-Powered-by-UI-path-"
+    },
+    {
+      "name": "Anthropic_Key",
+      "type": "Credential",
+      "value": "<only if not using AI Trust Layer>"
+    },
+    {
+      "name": "BugSheet_Id",
+      "type": "Text",
+      "value": "<SharePoint/Excel file id>"
+    },
+    {
+      "name": "Teams_Channel",
+      "type": "Text",
+      "value": "<team_id>/<channel_id>"
+    },
+    {
+      "name": "QA_BaseUrl",
+      "type": "Text",
+      "value": "https://www.saucedemo.com"
+    },
+    {
+      "name": "Jira_ProjectKey",
+      "type": "Text",
+      "value": "UIP"
+    }
+  ]
+}

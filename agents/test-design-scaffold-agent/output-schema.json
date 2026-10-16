@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "test_cases",
+    "spec_file",
+    "spec_path",
+    "module_tag",
+    "status",
+    "confidence",
+    "reasoning"
+  ],
+  "properties": {
+    "test_cases": {
+      "type": "string",
+      "description": "JSON array of test cases: id, title, type (positive|negative|boundary|edge), steps, expected, ac_ref."
+    },
+    "spec_file": {
+      "type": "string",
+      "description": "Full Playwright TypeScript spec file content."
+    },
+    "spec_path": {
+      "type": "string",
+      "description": "Repo path for the spec, e.g. tests/<module>/<ticket>.spec.ts"
+    },
+    "module_tag": {
+      "type": "string",
+      "description": "Module tag used for grep, e.g. @checkout"
+    },
+    "status": {
+      "type": "string",
+      "description": "\"success\", \"review\" or \"failure\"."
+    },
+    "confidence": {
+      "type": "number",
+      "description": "0.0-1.0 confidence in this result."
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "One-paragraph explanation."
+    }
+  },
+  "additionalProperties": false
+}

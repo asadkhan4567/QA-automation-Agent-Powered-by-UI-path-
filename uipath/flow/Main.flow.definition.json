@@ -1,0 +1,309 @@
+{
+  "name": "Sprint QA Automation Process",
+  "runtime": "maestro",
+  "format": "portable-definition/1.0",
+  "note": "Portable definition of the Studio Web Maestro Flow (nodes, ports, branch expressions, prompts by reference). Rebuild in Studio Web or import the Studio export under uipath/flow/export when available.",
+  "nodes": [
+    {
+      "id": "manualTrigger1",
+      "type": "core.trigger.manual",
+      "label": "Start: Sprint QA Run",
+      "config": {
+        "schedule": "Orchestrator time trigger every 2h"
+      }
+    },
+    {
+      "id": "fetchSprintQaTickets",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Fetch Sprint QA Tickets",
+      "config": {
+        "process": "RPA Workflow to Fetch Sprint QA Tickets",
+        "in_Mode": "sprint"
+      }
+    },
+    {
+      "id": "testDesignAgent",
+      "type": "uipath.agent.autonomous",
+      "label": "Process Ticket for Test Design",
+      "config": {
+        "agent": "agents/test-design-scaffold-agent"
+      }
+    },
+    {
+      "id": "approveTestPR",
+      "type": "uipath.human-in-the-loop.quick-form",
+      "label": "Human Review: Approve Test PR",
+      "config": {
+        "form": "orchestrator/action-center-forms.json#approveTestPR"
+      }
+    },
+    {
+      "id": "prApproved",
+      "type": "core.logic.decision",
+      "label": "Test PR Approved?",
+      "config": {
+        "expression": "$vars.approveTestPR.output.decision == \"Approve\""
+      }
+    },
+    {
+      "id": "endRejected",
+      "type": "core.control.end",
+      "label": "End: Test PR Rejected"
+    },
+    {
+      "id": "commitTestsOpenPR",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Commit Tests and Open PR",
+      "config": {
+        "process": "RPA Workflow to Commit Tests and Open PR"
+      }
+    },
+    {
+      "id": "triggerMonitorCI",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Trigger and Monitor CI",
+      "config": {
+        "process": "RPA Workflow to Trigger and Monitor CI",
+        "workflow": ".github/workflows/qa-e2e.yml"
+      }
+    },
+    {
+      "id": "ciPassed",
+      "type": "core.logic.decision",
+      "label": "CI Passed?",
+      "config": {
+        "expression": "$vars.triggerMonitorCI.output.passed == true"
+      }
+    },
+    {
+      "id": "teamsNotifyPass",
+      "type": "uipath.connector.uipath-microsoft-teams.send-channel-message",
+      "label": "Send Teams Notification"
+    },
+    {
+      "id": "endPassed",
+      "type": "core.control.end",
+      "label": "End: CI Passed"
+    },
+    {
+      "id": "failureTriageAgent",
+      "type": "uipath.agent.autonomous",
+      "label": "Triage CI Failures",
+      "config": {
+        "agent": "agents/failure-triage-agent",
+        "mode": "triage"
+      }
+    },
+    {
+      "id": "triageCategory",
+      "type": "core.logic.switch",
+      "label": "Triage Category",
+      "config": {
+        "cases": {
+          "ProductBug": "$vars.failureTriageAgent.output.category == \"ProductBug\" && $vars.failureTriageAgent.output.confidence >= 0.7",
+          "Flaky / TestBug": "($vars.failureTriageAgent.output.category == \"Flaky\" || $vars.failureTriageAgent.output.category == \"TestBug\" || $vars.failureTriageAgent.output.category == \"Environment\") && $vars.failureTriageAgent.output.confidence >= 0.7"
+        },
+        "default": "Confidence < 0.7"
+      }
+    },
+    {
+      "id": "bugReportAgent",
+      "type": "uipath.agent.autonomous",
+      "label": "Prepare Bug Report",
+      "config": {
+        "agent": "agents/bug-report-agent"
+      }
+    },
+    {
+      "id": "isS1S2",
+      "type": "core.logic.decision",
+      "label": "Severity S1/S2?",
+      "config": {
+        "expression": "$vars.bugReportAgent.output.severity == \"S1\" || $vars.bugReportAgent.output.severity == \"S2\""
+      }
+    },
+    {
+      "id": "approveBug",
+      "type": "uipath.human-in-the-loop.quick-form",
+      "label": "Human Review: Approve S1/S2 Bug",
+      "config": {
+        "form": "orchestrator/action-center-forms.json#approveBug"
+      }
+    },
+    {
+      "id": "createJiraBug",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Create Jira Bug and Update Sheet",
+      "config": {
+        "process": "RPA Workflow to Create Jira Bug and Update Bug Sheet",
+        "issueType": "Task + label bug (UIP has no Bug type)"
+      }
+    },
+    {
+      "id": "createJiraTask",
+      "type": "uipath.core.rpa-workflow",
+      "label": "Create Jira Task",
+      "config": {
+        "process": "RPA Workflow to Create Jira Bug and Update Bug Sheet",
+        "issueType": "Task"
+      }
+    },
+    {
+      "id": "reviewTriage",
+      "type": "uipath.human-in-the-loop.quick-form",
+      "label": "Review Low-Confidence Triage",
+      "config": {
+        "form": "orchestrator/action-center-forms.json#reviewTriage"
+      }
+    },
+    {
+      "id": "reviewerProductBug",
+      "type": "core.logic.decision",
+      "label": "Reviewer: Product Bug?",
+      "config": {
+        "expression": "$vars.reviewTriage.output.category == \"ProductBug\""
+      }
+    },
+    {
+      "id": "teamsNotifyResult",
+      "type": "uipath.connector.uipath-microsoft-teams.send-channel-message",
+      "label": "Send Teams Notification"
+    },
+    {
+      "id": "endReported",
+      "type": "core.control.end",
+      "label": "End: Reported"
+    }
+  ],
+  "edges": [
+    {
+      "from": "manualTrigger1",
+      "port": "output",
+      "to": "fetchSprintQaTickets"
+    },
+    {
+      "from": "fetchSprintQaTickets",
+      "port": "output",
+      "to": "testDesignAgent"
+    },
+    {
+      "from": "testDesignAgent",
+      "port": "success",
+      "to": "approveTestPR"
+    },
+    {
+      "from": "approveTestPR",
+      "port": "completed",
+      "to": "prApproved"
+    },
+    {
+      "from": "prApproved",
+      "port": "true",
+      "to": "commitTestsOpenPR"
+    },
+    {
+      "from": "prApproved",
+      "port": "false",
+      "to": "endRejected"
+    },
+    {
+      "from": "commitTestsOpenPR",
+      "port": "output",
+      "to": "triggerMonitorCI"
+    },
+    {
+      "from": "triggerMonitorCI",
+      "port": "output",
+      "to": "ciPassed"
+    },
+    {
+      "from": "ciPassed",
+      "port": "true",
+      "to": "teamsNotifyPass"
+    },
+    {
+      "from": "teamsNotifyPass",
+      "port": "output",
+      "to": "endPassed"
+    },
+    {
+      "from": "ciPassed",
+      "port": "false",
+      "to": "failureTriageAgent"
+    },
+    {
+      "from": "failureTriageAgent",
+      "port": "success",
+      "to": "triageCategory"
+    },
+    {
+      "from": "triageCategory",
+      "port": "case-productBug",
+      "to": "bugReportAgent"
+    },
+    {
+      "from": "triageCategory",
+      "port": "case-flakyTestBug",
+      "to": "createJiraTask"
+    },
+    {
+      "from": "triageCategory",
+      "port": "default",
+      "to": "reviewTriage"
+    },
+    {
+      "from": "bugReportAgent",
+      "port": "success",
+      "to": "isS1S2"
+    },
+    {
+      "from": "isS1S2",
+      "port": "true",
+      "to": "approveBug"
+    },
+    {
+      "from": "isS1S2",
+      "port": "false",
+      "to": "createJiraBug"
+    },
+    {
+      "from": "approveBug",
+      "port": "completed",
+      "to": "createJiraBug"
+    },
+    {
+      "from": "reviewTriage",
+      "port": "completed",
+      "to": "reviewerProductBug"
+    },
+    {
+      "from": "reviewerProductBug",
+      "port": "true",
+      "to": "bugReportAgent"
+    },
+    {
+      "from": "reviewerProductBug",
+      "port": "false",
+      "to": "createJiraTask"
+    },
+    {
+      "from": "createJiraBug",
+      "port": "output",
+      "to": "teamsNotifyResult"
+    },
+    {
+      "from": "createJiraTask",
+      "port": "output",
+      "to": "teamsNotifyResult"
+    },
+    {
+      "from": "teamsNotifyResult",
+      "port": "output",
+      "to": "endReported"
+    }
+  ],
+  "stickyNotes": {
+    "overview": "From sprint tickets to verified bug fixes. You start a run for the active sprint and an agent turns each QA ticket's acceptance criteria into test cases and a Playwright spec. A person approves every test PR before anything is committed, then CI runs the suite on GitHub Actions. When a run fails, a second agent triages the failure and a third writes the bug report, while a person signs off on S1/S2 bugs and on any triage the agent is unsure about. Bugs land in Jira and the Bug Sheet, and the team gets a Teams summary. Nothing is merged or closed automatically.",
+    "triage": "Confidence below 0.7 always goes to a person. ProductBug goes to the Bug Report Agent. TestBug, Flaky and Environment become Jira Tasks."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Failure Triage Agent",
+  "model": "Claude Sonnet 5",
+  "temperature": 0.1,
+  "knowledge_skills": [
+    "failure-triage",
+    "fix-verification"
+  ],
+  "guardrails": {
+    "confidence_threshold": 0.7,
+    "fail_toward": "human review",
+    "no_fabrication": true
+  },
+  "modes": [
+    "triage",
+    "verify"
+  ]
+}

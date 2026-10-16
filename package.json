@@ -1,0 +1,16 @@
+{
+  "name": "qa-automation-agent-uipath",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sprint QA Automation Process: UiPath Maestro (BPMN + Flow) agents that generate, run and triage Playwright tests from Jira tickets.",
+  "scripts": {
+    "test": "playwright test",
+    "test:checkout": "playwright test --grep @checkout",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "grep",
+    "repeat_each",
+    "bug_keys",
+    "status",
+    "confidence",
+    "reasoning"
+  ],
+  "properties": {
+    "grep": {
+      "type": "string",
+      "description": "Playwright grep expression, e.g. @checkout"
+    },
+    "repeat_each": {
+      "type": "number",
+      "description": "Always 10."
+    },
+    "bug_keys": {
+      "type": "string",
+      "description": "JSON array of Jira keys being verified."
+    },
+    "status": {
+      "type": "string",
+      "description": "\"success\", \"review\" or \"failure\"."
+    },
+    "confidence": {
+      "type": "number",
+      "description": "0.0-1.0 confidence in this result."
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "One-paragraph explanation."
+    }
+  },
+  "additionalProperties": false
+}

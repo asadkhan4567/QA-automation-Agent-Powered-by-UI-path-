@@ -1,0 +1,15 @@
+{
+  "name": "Test Design & Scaffold Agent",
+  "model": "Claude Sonnet 5",
+  "temperature": 0.2,
+  "knowledge_skills": [
+    "asadullahkhan-test-case-writer",
+    "asadullahkhan-browser-automation",
+    "asadullahkhan-code-review"
+  ],
+  "guardrails": {
+    "confidence_threshold": 0.7,
+    "fail_toward": "human review",
+    "no_fabrication": true
+  }
+}

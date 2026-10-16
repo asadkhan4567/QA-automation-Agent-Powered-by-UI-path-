@@ -1,0 +1,21 @@
+{
+  "triggers": [
+    {
+      "process": "Sprint QA Automation Process",
+      "type": "time",
+      "cron": "0 0 */2 ? * * *",
+      "timezone": "Asia/Karachi"
+    },
+    {
+      "process": "Verify Fixed Bugs",
+      "type": "time",
+      "cron": "0 0 9 ? * * *",
+      "timezone": "Asia/Karachi"
+    }
+  ],
+  "queue": {
+    "name": "QA_Tickets",
+    "maxRetries": 3,
+    "uniqueReference": true
+  }
+}

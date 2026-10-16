@@ -1,0 +1,13 @@
+{
+  "name": "Bug Report Agent",
+  "model": "Claude Sonnet 5",
+  "temperature": 0.2,
+  "knowledge_skills": [
+    "asadullahkhan-bug-report-writer"
+  ],
+  "guardrails": {
+    "confidence_threshold": 0.7,
+    "fail_toward": "human review",
+    "no_fabrication": true
+  }
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Defs_VerifyFixedBugs" targetNamespace="http://bpmn.io/schema/bpmn">
+<bpmn:process id="VerifyFixedBugs" name="Verify Fixed Bugs" isExecutable="true">
+<bpmn:startEvent id="VStart" name="Daily (Time trigger)"><bpmn:documentation>Orchestrator Time trigger: daily</bpmn:documentation><bpmn:outgoing>F_VStart_FetchFixed</bpmn:outgoing><bpmn:timerEventDefinition id="TD_VStart"><bpmn:timeCycle xsi:type="bpmn:tFormalExpression">0 0 9 * * ?</bpmn:timeCycle></bpmn:timerEventDefinition></bpmn:startEvent>
+<bpmn:serviceTask id="FetchFixed" name="Fetch Fixed Bugs"><bpmn:documentation>RPA: JQL status = Fixed AND labels = qa-auto</bpmn:documentation><bpmn:incoming>F_VStart_FetchFixed</bpmn:incoming><bpmn:outgoing>F_FetchFixed_PrepVerify</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="PrepVerify" name="Prepare Fix Verification"><bpmn:documentation>Agent 2: Failure Triage Agent (verify mode)</bpmn:documentation><bpmn:incoming>F_FetchFixed_PrepVerify</bpmn:incoming><bpmn:outgoing>F_PrepVerify_RunVerify</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="RunVerify" name="Trigger and Monitor CI (grep @module, repeat 10)"><bpmn:documentation>RPA Workflow to Trigger and Monitor CI with grep + repeat-each=10</bpmn:documentation><bpmn:incoming>F_PrepVerify_RunVerify</bpmn:incoming><bpmn:outgoing>F_RunVerify_G_V</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:exclusiveGateway id="G_V" name="All 10 runs passed?" default="F_G_V_Reopen"><bpmn:incoming>F_RunVerify_G_V</bpmn:incoming><bpmn:outgoing>F_G_V_MarkVerified</bpmn:outgoing><bpmn:outgoing>F_G_V_Reopen</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:serviceTask id="MarkVerified" name="Mark Jira Bug Verified"><bpmn:documentation>Jira transition -&gt; Verified + update Bug Sheet</bpmn:documentation><bpmn:incoming>F_G_V_MarkVerified</bpmn:incoming><bpmn:outgoing>F_MarkVerified_ConfirmClose</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:userTask id="ConfirmClose" name="Human Review: Confirm Ticket Closure"><bpmn:documentation>Action Center app: Confirm Ticket Closure</bpmn:documentation><bpmn:incoming>F_MarkVerified_ConfirmClose</bpmn:incoming><bpmn:outgoing>F_ConfirmClose_VEndClosed</bpmn:outgoing></bpmn:userTask>
+<bpmn:endEvent id="VEndClosed" name="Closed"><bpmn:incoming>F_ConfirmClose_VEndClosed</bpmn:incoming></bpmn:endEvent>
+<bpmn:serviceTask id="Reopen" name="Reopen Jira Bug"><bpmn:documentation>Jira transition -&gt; Reopened + comment with failing runs</bpmn:documentation><bpmn:incoming>F_G_V_Reopen</bpmn:incoming><bpmn:outgoing>F_Reopen_VNotify</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:serviceTask id="VNotify" name="Send Teams Notification"><bpmn:incoming>F_Reopen_VNotify</bpmn:incoming><bpmn:outgoing>F_VNotify_VEndReopened</bpmn:outgoing></bpmn:serviceTask>
+<bpmn:endEvent id="VEndReopened" name="Reopened"><bpmn:incoming>F_VNotify_VEndReopened</bpmn:incoming></bpmn:endEvent>
+<bpmn:sequenceFlow id="F_VStart_FetchFixed" sourceRef="VStart" targetRef="FetchFixed"/>
+<bpmn:sequenceFlow id="F_FetchFixed_PrepVerify" sourceRef="FetchFixed" targetRef="PrepVerify"/>
+<bpmn:sequenceFlow id="F_PrepVerify_RunVerify" sourceRef="PrepVerify" targetRef="RunVerify"/>
+<bpmn:sequenceFlow id="F_RunVerify_G_V" sourceRef="RunVerify" targetRef="G_V"/>
+<bpmn:sequenceFlow id="F_G_V_MarkVerified" sourceRef="G_V" targetRef="MarkVerified" name="Pass"><bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">vars.verifyResult.passed == true</bpmn:conditionExpression></bpmn:sequenceFlow>
+<bpmn:sequenceFlow id="F_G_V_Reopen" sourceRef="G_V" targetRef="Reopen" name="Fail"/>
+<bpmn:sequenceFlow id="F_MarkVerified_ConfirmClose" sourceRef="MarkVerified" targetRef="ConfirmClose"/>
+<bpmn:sequenceFlow id="F_ConfirmClose_VEndClosed" sourceRef="ConfirmClose" targetRef="VEndClosed"/>
+<bpmn:sequenceFlow id="F_Reopen_VNotify" sourceRef="Reopen" targetRef="VNotify"/>
+<bpmn:sequenceFlow id="F_VNotify_VEndReopened" sourceRef="VNotify" targetRef="VEndReopened"/>
+<bpmn:textAnnotation id="N_V"><bpmn:text>Verify fixed bugs before anyone closes them
+
+Every day the process picks up Jira bugs marked Fixed and an agent prepares a targeted rerun of the failing module. CI runs those tests ten times to catch flakiness. A clean run marks the bug Verified and asks a person to confirm closure, because nothing is closed automatically. Any failure reopens the bug and posts to Teams.</bpmn:text></bpmn:textAnnotation>
+</bpmn:process>
+<bpmndi:BPMNDiagram id="D_VerifyFixedBugs"><bpmndi:BPMNPlane id="PL_VerifyFixedBugs" bpmnElement="VerifyFixedBugs">
+<bpmndi:BPMNShape id="VStart_di" bpmnElement="VStart"><dc:Bounds x="60" y="182.0" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="FetchFixed_di" bpmnElement="FetchFixed"><dc:Bounds x="140" y="165.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="PrepVerify_di" bpmnElement="PrepVerify"><dc:Bounds x="300" y="165.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="RunVerify_di" bpmnElement="RunVerify"><dc:Bounds x="460" y="165.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="G_V_di" bpmnElement="G_V" isMarkerVisible="true"><dc:Bounds x="620" y="175.0" width="50" height="50"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="MarkVerified_di" bpmnElement="MarkVerified"><dc:Bounds x="720" y="55.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="ConfirmClose_di" bpmnElement="ConfirmClose"><dc:Bounds x="880" y="55.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="VEndClosed_di" bpmnElement="VEndClosed"><dc:Bounds x="1040" y="72.0" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="Reopen_di" bpmnElement="Reopen"><dc:Bounds x="720" y="275.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="VNotify_di" bpmnElement="VNotify"><dc:Bounds x="880" y="275.0" width="110" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="VEndReopened_di" bpmnElement="VEndReopened"><dc:Bounds x="1040" y="292.0" width="36" height="36"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="N_V_di" bpmnElement="N_V"><dc:Bounds x="40" y="-120" width="520" height="180"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="F_VStart_FetchFixed_di" bpmnElement="F_VStart_FetchFixed"><di:waypoint x="96" y="200.0"/><di:waypoint x="140" y="200.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_FetchFixed_PrepVerify_di" bpmnElement="F_FetchFixed_PrepVerify"><di:waypoint x="250" y="200.0"/><di:waypoint x="300" y="200.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_PrepVerify_RunVerify_di" bpmnElement="F_PrepVerify_RunVerify"><di:waypoint x="410" y="200.0"/><di:waypoint x="460" y="200.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_RunVerify_G_V_di" bpmnElement="F_RunVerify_G_V"><di:waypoint x="570" y="200.0"/><di:waypoint x="620" y="200.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_V_MarkVerified_di" bpmnElement="F_G_V_MarkVerified"><di:waypoint x="645.0" y="175.0"/><di:waypoint x="645.0" y="90.0"/><di:waypoint x="720" y="90.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_G_V_Reopen_di" bpmnElement="F_G_V_Reopen"><di:waypoint x="645.0" y="225.0"/><di:waypoint x="645.0" y="310.0"/><di:waypoint x="720" y="310.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_MarkVerified_ConfirmClose_di" bpmnElement="F_MarkVerified_ConfirmClose"><di:waypoint x="830" y="90.0"/><di:waypoint x="880" y="90.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_ConfirmClose_VEndClosed_di" bpmnElement="F_ConfirmClose_VEndClosed"><di:waypoint x="990" y="90.0"/><di:waypoint x="1040" y="90.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_Reopen_VNotify_di" bpmnElement="F_Reopen_VNotify"><di:waypoint x="830" y="310.0"/><di:waypoint x="880" y="310.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="F_VNotify_VEndReopened_di" bpmnElement="F_VNotify_VEndReopened"><di:waypoint x="990" y="310.0"/><di:waypoint x="1040" y="310.0"/></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>
