@@ -45,11 +45,11 @@ jobs:
       BASE_URL: ${{ inputs.base_url || 'https://www.saucedemo.com' }}
       RETRIES: ${{ inputs.retries || '2' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -84,7 +84,7 @@ jobs:
       # Artifact name "results" is the contract read by the UiPath CI step (downloads results.json).
       - name: Upload results.json
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: results
           path: test-results/results.json
@@ -92,7 +92,7 @@ jobs:
 
       - name: Upload HTML report and traces
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report
           path: |
